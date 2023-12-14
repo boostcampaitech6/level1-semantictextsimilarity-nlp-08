@@ -13,7 +13,7 @@
 # git remote add origin https://github.com/boostcampaitech6/level1-semantictextsimilarity-nlp-08.git
 # git pull origin master
 
-# # Prepare dataset
+# Prepare dataset
 # mkdir data
 # cd data
 # wget https://aistages-api-public-prod.s3.amazonaws.com/app/Competitions/000264/data/data.tar.gz

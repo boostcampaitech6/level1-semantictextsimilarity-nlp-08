@@ -1,6 +1,8 @@
 from data_loader import Dataloader
 from model import Model
 from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 
 import argparse
 import random
@@ -22,9 +24,9 @@ if __name__ == '__main__':
     # 터미널 실행 예시 : python3 run.py --batch_size=64 ...
     # 실행 시 '--batch_size=64' 같은 인자를 입력하지 않으면 default 값이 기본으로 실행됩니다
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='klue/roberta-base', type=str)
-    parser.add_argument('--batch_size', default=16, type=int)
-    parser.add_argument('--max_epoch', default=1, type=int)
+    parser.add_argument('--model_name', default='klue/roberta-small', type=str)
+    parser.add_argument('--batch_size', default=8, type=int)
+    parser.add_argument('--max_epoch', default=3, type=int)
     parser.add_argument('--shuffle', default=True)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     parser.add_argument('--train_path', default='../data/train.csv')
@@ -38,15 +40,26 @@ if __name__ == '__main__':
                             args.test_path, args.predict_path)
     model = Model(args.model_name, args.learning_rate)
     wandb_logger = WandbLogger(project="level1_STS",
-                               name="model_name:klue/roberta-large//batch_size:16//epoch:1//lr:1e-5//loss_func:L1//optim:AdamW")
+                               name="model_name:klue/roberta-small//batch_size:8//epoch:3//lr:1e-5//loss_func:MSE//optim:AdamW")
 
+    save_path = f"{args.model_name}_Max-epoch{args.max_epoch}_Batch-size{args.batch_size}/"
     # gpu가 없으면 accelerator="cpu"로 변경해주세요, gpu가 여러개면 'devices=4'처럼 사용하실 gpu의 개수를 입력해주세요
     trainer = pl.Trainer(
         accelerator="gpu",
         devices=1, 
         max_epochs=args.max_epoch,
         log_every_n_steps=1,
-        logger=wandb_logger)
+        logger=wandb_logger,
+        callbacks=[
+            EarlyStopping(monitor="val_pearson",
+                          patience=5,
+                          mode='max'),
+            ModelCheckpoint(dirpath=save_path,
+                            save_top_k=1,
+                            monitor="val_pearson",
+                            mode='max',
+                            filename="{epoch}-{step}-{val_pearson}")
+        ])
 
     # Train part
     trainer.fit(model=model, datamodule=dataloader)

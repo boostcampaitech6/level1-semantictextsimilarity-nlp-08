@@ -9,6 +9,8 @@ import torch
 import torchmetrics
 import pytorch_lightning as pl
 
+import wandb
+
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, inputs, targets=[]):
@@ -126,7 +128,8 @@ class Model(pl.LightningModule):
         self.loss_func = torch.nn.L1Loss()
 
     def forward(self, x):
-        x = self.plm(x)['logits']
+        attention_mask = (x != 1).float()
+        x = self.plm(x, attention_mask=attention_mask)['logits']
 
         return x
 
@@ -164,6 +167,60 @@ class Model(pl.LightningModule):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
         return optimizer
 
+class Model(pl.LightningModule):
+    def __init__(self, model_name, lr):
+        super().__init__()
+        self.save_hyperparameters()
+
+        self.model_name = model_name
+        self.lr = lr
+
+        # 사용할 모델을 호출합니다.
+        self.plm = transformers.AutoModelForSequenceClassification.from_pretrained(
+            pretrained_model_name_or_path=model_name, num_labels=1)
+        # Loss 계산을 위해 사용될 L1Loss를 호출합니다.
+        self.loss_func = torch.nn.CrossEntropyLoss()
+
+    def forward(self, x):
+        attention_mask = (x != 1).float()
+        # x = x.type(torch.float64)
+        x = self.plm(x, attention_mask=attention_mask)['logits']
+
+        return x
+
+    def training_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self(x)
+        loss = self.loss_func(logits, y.float())
+        self.log("train_loss", loss)
+
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self(x)
+        loss = self.loss_func(logits, y.float())
+        self.log("val_loss", loss)
+
+        self.log("val_pearson", torchmetrics.functional.pearson_corrcoef(logits.squeeze(), y.squeeze()))
+
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        x, y = batch
+        logits = self(x)
+
+        self.log("test_pearson", torchmetrics.functional.pearson_corrcoef(logits.squeeze(), y.squeeze()))
+
+    def predict_step(self, batch, batch_idx):
+        x = batch
+        logits = self(x)
+
+        return logits.squeeze()
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
+        return optimizer
 
 if __name__ == '__main__':
     # 하이퍼 파라미터 등 각종 설정값을 입력받습니다
@@ -190,6 +247,11 @@ if __name__ == '__main__':
 
     # Inference part
     # 저장된 모델로 예측을 진행합니다.
+    #model = torch.load('model.pt')
+    #run = wandb.init()
+    #artifact = run.use_artifact('catwave/lightning_logs/model-una7n3ia:v19', type='model')
+    #artifact_dir = artifact.download()
+    #model = Model.load_from_checkpoint(artifact_dir+'/model.ckpt')
     model = torch.load('model.pt')
     predictions = trainer.predict(model=model, datamodule=dataloader)
 

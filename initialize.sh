@@ -1,5 +1,5 @@
-#apt-get update
-#apt-get install git
+apt-get update
+apt-get install git
 
 # read -p "write your name: " name
 # read -p "write your email: " email

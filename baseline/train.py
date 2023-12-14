@@ -19,7 +19,9 @@ random.seed(0)
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning import Trainer
 
-wandb_logger = WandbLogger(log_model="all")
+import os
+
+wandb_logger = WandbLogger(log_model=True) # all, True, False
 
 
 class Dataset(torch.utils.data.Dataset):
@@ -134,11 +136,14 @@ class Model(pl.LightningModule):
         # 사용할 모델을 호출합니다.
         self.plm = transformers.AutoModelForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_name, num_labels=1)
+        self.plm.config.pad_token_id
         # Loss 계산을 위해 사용될 L1Loss를 호출합니다.
-        self.loss_func = torch.nn.L1Loss()
+        self.loss_func = torch.nn.L1Loss() # BCELoss, L1Loss, MSELoss
 
     def forward(self, x):
-        x = self.plm(x)['logits']
+        attention_mask = (x != 1).float()
+        x = x.type(torch.float64)
+        x = self.plm(x, attention_mask=attention_mask)['logits']
 
         return x
 
@@ -182,9 +187,9 @@ if __name__ == '__main__':
     # 터미널 실행 예시 : python3 run.py --batch_size=64 ...
     # 실행 시 '--batch_size=64' 같은 인자를 입력하지 않으면 default 값이 기본으로 실행됩니다
     parser = argparse.ArgumentParser()
-    parser.add_argument('--model_name', default='klue/roberta-small', type=str)
-    parser.add_argument('--batch_size', default=16, type=int)
-    parser.add_argument('--max_epoch', default=1, type=int)
+    parser.add_argument('--model_name', default='klue/roberta-large', type=str)
+    parser.add_argument('--batch_size', default=8, type=int)
+    parser.add_argument('--max_epoch', default=10, type=int)
     parser.add_argument('--shuffle', default=True)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     parser.add_argument('--train_path', default='../data/train.csv')
@@ -192,6 +197,8 @@ if __name__ == '__main__':
     parser.add_argument('--test_path', default='../data/dev.csv')
     parser.add_argument('--predict_path', default='../data/test.csv')
     args = parser.parse_args(args=[])
+
+    os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     # dataloader와 model을 생성합니다.
     dataloader = Dataloader(args.model_name, args.batch_size, args.shuffle, args.train_path, args.dev_path,
@@ -202,7 +209,7 @@ if __name__ == '__main__':
     trainer = pl.Trainer(accelerator="gpu", devices=1, max_epochs=args.max_epoch, log_every_n_steps=1, logger=wandb_logger)
 
     # Train part
-    trainer.fit(model=model, datamodule=dataloader)
+    trainer.fit(model=model, datamodule=dataloader)   
     trainer.test(model=model, datamodule=dataloader)
 
     # 학습이 완료된 모델을 저장합니다.

@@ -1,0 +1,13 @@
+
+.bash_history
+.netrc
+.viminfo
+.gitconfig
+.cache/*
+model.pt
+output.csv
+wandb/*
+lightning_logs/*
+__pycache__
+*.ckpt
+.config/wandb/settings

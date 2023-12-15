@@ -26,7 +26,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', default='klue/roberta-small', type=str)
     parser.add_argument('--batch_size', default=8, type=int)
-    parser.add_argument('--max_epoch', default=3, type=int)
+    parser.add_argument('--max_epoch', default=2, type=int)
     parser.add_argument('--shuffle', default=True)
     parser.add_argument('--learning_rate', default=1e-5, type=float)
     parser.add_argument('--train_path', default='../data/train.csv')
@@ -40,9 +40,9 @@ if __name__ == '__main__':
                             args.test_path, args.predict_path)
     model = Model(args.model_name, args.learning_rate)
     wandb_logger = WandbLogger(project="level1_STS",
-                               name="model_name:klue/roberta-small//batch_size:8//epoch:3//lr:1e-5//loss_func:MSE//optim:AdamW")
+                               name="model_name:klue/roberta-small//batch_size:8//epoch:2//lr:1e-5//loss_func:MSE//optim:AdamW")
 
-    save_path = f"{args.model_name}_Max-epoch{args.max_epoch}_Batch-size{args.batch_size}/"
+    save_path = f"save_model/{args.model_name}_Max-epoch{args.max_epoch}_Batch-size{args.batch_size}/"
     # gpu가 없으면 accelerator="cpu"로 변경해주세요, gpu가 여러개면 'devices=4'처럼 사용하실 gpu의 개수를 입력해주세요
     trainer = pl.Trainer(
         accelerator="gpu",
@@ -58,7 +58,7 @@ if __name__ == '__main__':
                             save_top_k=1,
                             monitor="val_pearson",
                             mode='max',
-                            filename="{epoch}-{step}-{val_pearson}")
+                            filename="best_model")
         ])
 
     # Train part
@@ -67,4 +67,4 @@ if __name__ == '__main__':
     wandb.finish()
 
     # 학습이 완료된 모델을 저장합니다.
-    torch.save(model, 'model.pt')
+    trainer.save_checkpoint(save_path + "complete_model.ckpt")

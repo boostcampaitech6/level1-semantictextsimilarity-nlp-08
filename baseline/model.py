@@ -55,6 +55,8 @@ class Model(pl.LightningModule):
 
         return logits.squeeze()
 
+    # lr_scheduler 종류는 https://sanghyu.tistory.com/113 여기에서 참고
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.3)
+        return [optimizer], [scheduler]

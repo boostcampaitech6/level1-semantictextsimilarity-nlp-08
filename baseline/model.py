@@ -14,11 +14,14 @@ class Model(pl.LightningModule):
         # 사용할 모델을 호출합니다.
         self.plm = transformers.AutoModelForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_name, num_labels=1)
-        # Loss 계산을 위해 사용될 L2Loss를 호출합니다.
-        self.loss_func = torch.nn.MSELoss()
+        self.plm.config.pad_token_id
+        # Loss 계산을 위해 사용될 L1Loss를 호출합니다.
+        self.loss_func = torch.nn.L1Loss()
 
     def forward(self, x):
-        x = self.plm(x)['logits']
+        attention_mask = (x != 1).float()
+        # x = x.type(torch.float64)  #이거는 아직 실험해보기 전인데, 지금 우리 모델의 output이 0에 가까워서 pearson 계산에 불리하다고 함.
+        x = self.plm(x, attention_mask=attention_mask)['logits']
 
         return x
 

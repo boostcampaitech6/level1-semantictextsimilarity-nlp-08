@@ -1,0 +1,9 @@
+.cache/*
+baseline/lightning_logs/*
+baseline/wandb/*
+*.pt
+.bash*
+.netrc
+.viminfo
+settings
+

@@ -29,7 +29,10 @@ class KfoldDataloader(pl.LightningDataModule):
                  model_name, 
                  batch_size, 
                  shuffle,
-                 bce,
+                 train_path, 
+                 dev_path, 
+                 test_path, 
+                 predict_path,
                  k: int=1, # fold number(일반적으로 5 or 10)
                  split_seed: int=12345, # split needs to be always the same for correct cross validation
                  num_splits: int=10):
@@ -37,7 +40,12 @@ class KfoldDataloader(pl.LightningDataModule):
         self.model_name = model_name
         self.batch_size = batch_size
         self.shuffle = shuffle
-        self.bce = bce
+        
+        self.train_path = train_path
+        self.dev_path = dev_path
+        self.test_path = test_path
+        self.predict_path = predict_path
+
         self.k = k
         self.split_seed = split_seed
         self.num_splits = num_splits

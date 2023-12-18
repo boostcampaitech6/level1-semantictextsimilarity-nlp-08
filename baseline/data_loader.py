@@ -3,6 +3,7 @@ import torch
 import transformers
 import pytorch_lightning as pl
 
+from sklearn.model_selection import StratifiedShuffleSplit
 from tqdm.auto import tqdm
 
 
@@ -53,6 +54,11 @@ class Dataloader(pl.LightningDataModule):
             text = '[SEP]'.join([item[text_column] for text_column in self.text_columns])
             outputs = self.tokenizer(text, add_special_tokens=True, padding='max_length', truncation=True)
             data.append(outputs['input_ids'])
+        # sentence1과 sentence2를 swap해서 추가.
+        for idx, item in tqdm(dataframe.iterrows(), desc='tokenizing', total=len(dataframe)):
+            text = '[SEP]'.join([item[text_column] for text_column in self.text_columns[::-1]])
+            outputs = self.tokenizer(text, add_special_tokens=True, padding='max_length', truncation=True)
+            data.append(outputs['input_ids'])
         return data
 
     def preprocessing(self, data):
@@ -72,8 +78,14 @@ class Dataloader(pl.LightningDataModule):
     def setup(self, stage='fit'):
         if stage == 'fit':
             # 학습 데이터와 검증 데이터셋을 호출합니다
-            train_data = pd.read_csv(self.train_path)
-            val_data = pd.read_csv(self.dev_path)
+            data = pd.read_csv(self.train_path)
+            # train_data = pd.read_csv(self.train_path)
+            # val_data = pd.read_csv(self.dev_path)
+            # 층화 추출을 적용. 
+            split = StratifiedShuffleSplit(n_splits=1, train_size=0.8, test_size=0.2, random_state=1000)  
+            for train_idx, val_idx in split.split(data, data["binary-label"]):
+                train_data = data.loc[train_idx]
+                val_data = data.loc[val_idx]
 
             # 학습데이터 준비
             train_inputs, train_targets = self.preprocessing(train_data)

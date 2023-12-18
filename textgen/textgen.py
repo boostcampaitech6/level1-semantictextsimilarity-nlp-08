@@ -21,13 +21,15 @@ def text_generation(data):
     model = T5ForConditionalGeneration.from_pretrained("paust/pko-chat-t5-large").cuda()
 
     # 5점짜리 prompt
-    prompt_tpl_rank5 = "문제가 주어지면 문제와 동일한 의미를 가지지만 주요 단어를 교체하시오.\n ```\n예시: 정형식판사 감사요청\nanswer: 정형식 판사 감사요청 \n```\n문제:{text}\n\nanswer:\n"
-    prompt_tpl_rank4 = "문제가 주어지면 문제의 단어를 교체하여 비슷한 다른 문장을 작성하시오.\n ```\n예시: 정말 간절히 정부의 도움이 필요합니다.\nanswer: 정부의 도움이 절실히 필요합니다. \n```\n문제:{text}\n\nanswer:\n"
-    prompt_tpl_rank3 = "문제가 주어지면 비스무리한 문장으로 대체하시오.\n ```\n예시:\n \n문제: 오늘이 최종회여서 정말x 아쉬워요..\nanswer: 오늘이 마지막이라니 정말 아쉽다는... \n```\n문제:{text}\n\nanswer:\n"
-    prompt_tpl_rank2 = "문제가 주어지면 문제와 비슷해보이지만 서로 유사하지 않은 문장으로 단어를 교체하시오.\n ```\n예시: 부트캠프 프로그램 얘기부터 추천 도메인 얘기까지 순식간에 시간이 흘러가서 너무 아쉬웠습니다 ㅎㅎ\nanswer: 각자 업무와 부트캠프 얘기부터 앞으로 진로 얘기까지 나누다보니 한시간 훌쩍 넘게 수다를 떨었네요. \n```\n문제:{text}\n\nanswer:\n"
-    prompt_tpl_rank1 = "문제가 주어지면 문장과 비슷해보이지만 서로 의미가 상관없도록 단어를 교체하시오.\n ```\n예시: 둘 다 낯가리면서도 수다스러움을 감출 수 없는 캐릭터라는 것을 깨닫고 ㅋㅋ\nanswer: 재밌는 컨셉을 써도 숨길 수 없는 퀄리티ㅠㅠㅠ \n```\n문제:{text}\n\nanswer:\n"
+    prompt_tpl_rank5 = "\n문장을 조금 바꾸시오. 예시:\n''''''''''''''''''''''''''''''''''''''''''''''''''''문제:이국종교수님 지원해주세요\n정답:이국종 교수님을 지원해주세요\n''''''''''''''''''''''''''''''''''''''''''''''''''''\n문제:{text}\n\n정답:\n"
+    prompt_tpl_rank4 = "\n문장이 주어지면 주요 단어를 비슷한 단어로 바꾸시오. 예시:\n''''''''''''''''''''''''''''''''''''''''''''''''''''문제:곧.. 다시 만나요!!\n정답:곧.. 또 만나요!! \n''''''''''''''''''''''''''''''''''''''''''''''''''''\n문제:{text}\n\n정답:\n"
+    prompt_tpl_rank3 = "\n문장이 주어지면 주요 단어를 대체하시오. 예시\n:''''''''''''''''''''''''''''''''''''''''''''''''''''\n문제:외국인 무비자 입국페지요망\n정답:제주도 중국인 무비자 폐지 바랍니다.\n''''''''''''''''''''''''''''''''''''''''''''''''''''\n문제:{text}\n\n정답:\n"
+    prompt_tpl_rank2 = "\n문장이 주어지면 다른 의미가 되도록 비슷하게 바꾸시오. 예시\n:''''''''''''''''''''''''''''''''''''''''''''''''''''\n\n문제:허걱 ㅋㅋ 즐거운 대화였습니다.\n정답:눈물 살짝 훔치며 즐거운 이야기 나누었습니다! ㅋㅋㅋ \n```\n문제:{text}\n\n정답:\n"
+    prompt_tpl_rank1 = "\n문장이 주어지면 다른 의미가 되도록 바꾸시오. 예시\n:''''''''''''''''''''''''''''''''''''''''''''''''''''\n\n문제:국회의원 자격조건 요청합니다\n정답:국회의원 최저시급제로 전환 요청합니다 \n```\n문제:{text}\n\n정답:\n"
     prompt_tpl_list = [prompt_tpl_rank1, prompt_tpl_rank2, prompt_tpl_rank3, prompt_tpl_rank4, prompt_tpl_rank5]
 
+    sentence_1_list = []
+    sentence_2_list = []
     generated_1 = []
     generated_2 = []
     label_list = []
@@ -45,6 +47,7 @@ def text_generation(data):
             num_return_sequences=1,
             )
         text = tokenizer.batch_decode(logits, skip_special_tokens=True)[0]
+        sentence_1_list.append(sentence_1)
         generated_1.append(text)
         prompt = prompt_tpl_list[label-1].format(text=sentence_2)
         input_ids = tokenizer(prompt, return_tensors='pt').input_ids.cuda()
@@ -56,14 +59,15 @@ def text_generation(data):
             do_sample=True,
             num_return_sequences=1,
             )
+        sentence_2_list.append(sentence_2)
         generated_2.append(text)
         label_list.append(label)
         
         count += 1
-        if count == 10:
+        if count == 5:
             break
 
-    return [generated_1, generated_2, label_list]
+    return [sentence_1_list, generated_1, sentence_2_list, generated_2, label_list]
 
 
 # read ../data/traincsv
@@ -74,5 +78,7 @@ train_df, train_targets = preprocessing(train_df)
 generated = text_generation(train_df)
 
 # Save generated text
-generated_df = pd.DataFrame({'sentence_1': generated[0], 'sentence_2': generated[1], 'label': generated[2][:10]})
+generated_df = pd.DataFrame({'sentence_1': generated[0], 'generated_1': generated[1], 'sentence_2': generated[2], 'generated_2': generated[3], 'label': generated[4]})
 generated_df.to_csv("../data/generated.csv", index=False)
+
+print("Done!")

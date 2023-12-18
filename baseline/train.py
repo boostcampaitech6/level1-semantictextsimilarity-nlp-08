@@ -1,4 +1,5 @@
 from data_loader import Dataloader
+from kfold_data_loader import KfoldDataloader
 from model import Model
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -40,8 +41,13 @@ if __name__ == '__main__':
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     # dataloader와 model을 생성합니다.
-    dataloader = Dataloader(args.model_name, args.batch_size, args.shuffle, args.train_path, args.dev_path,
-                            args.test_path, args.predict_path)
+    dataloader = KfoldDataloader(args.model_name, 
+                                 args.batch_size, 
+                                 args.shuffle, 
+                                 args.train_path, 
+                                 args.dev_path,
+                                 args.test_path, 
+                                 args.predict_path)
     model = Model(args.model_name, args.learning_rate)
     wandb_logger = WandbLogger(log_model=True)
 

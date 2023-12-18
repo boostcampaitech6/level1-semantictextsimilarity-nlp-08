@@ -6,4 +6,9 @@ baseline/wandb/*
 .netrc
 .viminfo
 settings
-
+.ipython/*
+.local/*
+sbert/lightning_logs/*
+sbert/wandb/*
+*pyc
+*ckpt

@@ -4,6 +4,7 @@ import pandas as pd
 from tqdm.auto import tqdm
 
 import torch
+from torch.utils.data import Subset
 from sklearn.model_selection import KFold
 
 class Dataset(torch.utils.data.Dataset):
@@ -33,7 +34,7 @@ class KfoldDataloader(pl.LightningDataModule):
                  dev_path, 
                  test_path, 
                  predict_path,
-                 k: int=1, # fold number(일반적으로 5 or 10)
+                 k: int=5, # fold number(일반적으로 5 or 10)
                  split_seed: int=12345, # split needs to be always the same for correct cross validation
                  num_splits: int=10):
         super().__init__()
@@ -55,8 +56,11 @@ class KfoldDataloader(pl.LightningDataModule):
         self.test_dataset = None
         self.predict_dataset = None
 
-        self.tokenizer = transformers.AutoTokenizer.from_pretrained(model_name, max_length=160)
-        self.set_preprocessing()
+        self.tokenizer = transformers.AutoTokenizer.from_pretrained(model_name, max_length=128)
+        self.target_columns = ['label']
+        self.delete_columns = ['id']
+        self.text_columns = ['sentence_1', 'sentence_2']
+        self.setup()
 
     def tokenizing(self, dataframe):
         data = []
@@ -96,15 +100,16 @@ class KfoldDataloader(pl.LightningDataModule):
             kf = KFold(n_splits=self.num_splits,
                        shuffle=self.shuffle,
                        random_state=self.split_seed)
-            all_splits = [ k for k in kf.split(total_dataset) ]
+            all_splits = list(kf.split(total_dataset))
 
             # k번째 fold된 Dataset의 index선택
             train_indices, val_indices = all_splits[ self.k ]
-            train_indices, val_indices = train_indices.tolist(), val_indices.tolist()
 
             # fold한 index에 따라 Dataset분할
-            self.train_dataset = [ total_dataset[x] for x in train_indices ]
-            self.val_dataset = [ total_dataset[x] for x in val_indices ]
+            self.train_dataset = Subset(total_dataset, train_indices)
+            self.val_dataset = Subset(total_dataset, val_indices)
+            
+            del total_data, total_inputs, total_targets
         else:
             # 평가데이터 준비
             test_data = pd.read_csv(self.test_path)

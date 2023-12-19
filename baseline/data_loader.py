@@ -50,14 +50,14 @@ class Dataloader(pl.LightningDataModule):
     def tokenizing(self, dataframe, swap):
         data = []
         for idx, item in tqdm(dataframe.iterrows(), desc='tokenizing', total=len(dataframe)):
-            # 두 입력 문장을 [SEP] 토큰으로 이어붙여서 전처리합니다.
-            text = '[SEP]'.join([item[text_column] for text_column in self.text_columns])
+            # 두 입력 문장을 </s> 토큰으로 이어붙여서 전처리합니다.
+            text = '</s>'.join([item[text_column] for text_column in self.text_columns])
             outputs = self.tokenizer(text, add_special_tokens=True, padding='max_length', truncation=True)
             data.append(outputs['input_ids'])
         # sentence1과 sentence2를 swap해서 추가.
         if swap:
             for idx, item in tqdm(dataframe.iterrows(), desc='tokenizing', total=len(dataframe)):
-                text = '[SEP]'.join([item[text_column] for text_column in self.text_columns[::-1]])
+                text = '</s>'.join([item[text_column] for text_column in self.text_columns[::-1]])
                 outputs = self.tokenizer(text, add_special_tokens=True, padding='max_length', truncation=True)
                 data.append(outputs['input_ids'])
         return data
@@ -82,20 +82,20 @@ class Dataloader(pl.LightningDataModule):
     def setup(self, stage='fit'):
         if stage == 'fit':
             # 학습 데이터와 검증 데이터셋을 호출합니다
-            # data = pd.read_csv(self.train_path)
             train_data = pd.read_csv(self.train_path)
             val_data = pd.read_csv(self.dev_path)
             # 층화 추출을 적용. 
+            # data = pd.read_csv(self.train_path)
             # split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=1000)  
             # for train_idx, val_idx in split.split(data, data["binary-label"]):
             #     train_data = data.loc[train_idx]
             #     val_data = data.loc[val_idx]
 
             # 학습데이터 준비
-            train_inputs, train_targets = self.preprocessing(train_data, True)
+            train_inputs, train_targets = self.preprocessing(train_data, False)
 
             # 검증데이터 준비
-            val_inputs, val_targets = self.preprocessing(val_data, True)
+            val_inputs, val_targets = self.preprocessing(val_data, False)
 
             # train 데이터만 shuffle을 적용해줍니다, 필요하다면 val, test 데이터에도 shuffle을 적용할 수 있습니다
             self.train_dataset = Dataset(train_inputs, train_targets)
@@ -122,6 +122,7 @@ class Dataloader(pl.LightningDataModule):
     def predict_dataloader(self):
         return torch.utils.data.DataLoader(self.predict_dataset, batch_size=self.batch_size)
 
+
 class KfoldDataloader(pl.LightningDataModule):
     def __init__(self, 
                  model_name, 
@@ -133,7 +134,7 @@ class KfoldDataloader(pl.LightningDataModule):
                  predict_path,
                  k: int=1, # fold number(일반적으로 5 or 10)
                  split_seed: int=12345, # split needs to be always the same for correct cross validation
-                 num_splits: int=10):
+                 num_splits: int=5):
         super().__init__()
         self.model_name = model_name
         self.batch_size = batch_size

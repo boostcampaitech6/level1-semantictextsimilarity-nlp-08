@@ -51,7 +51,7 @@ if __name__ == '__main__':
     model = Model(args.model_name, args.learning_rate)
     wandb_logger = WandbLogger(log_model=True)
 
-    save_path = f"{args.model_name}_Max-epoch{args.max_epoch}_Batch-size{args.batch_size}/"
+    save_path = f"save_model/{args.model_name}_Max-epoch{args.max_epoch}_Batch-size{args.batch_size}/"
     # gpu가 없으면 accelerator="cpu"로 변경해주세요, gpu가 여러개면 'devices=4'처럼 사용하실 gpu의 개수를 입력해주세요
     trainer = pl.Trainer(
         accelerator="gpu",
@@ -60,11 +60,14 @@ if __name__ == '__main__':
         log_every_n_steps=1,
         logger=wandb_logger,
         callbacks=[
+            EarlyStopping(monitor="val_pearson",
+                          patience=10,
+                          mode='max'),
             ModelCheckpoint(dirpath=save_path,
                             save_top_k=1,
                             monitor="val_pearson",
                             mode='max',
-                            filename="{epoch}-{step}-{val_pearson}")
+                            filename="best_model")
         ])
 
     # Train part
@@ -73,4 +76,4 @@ if __name__ == '__main__':
     wandb.finish()
 
     # 학습이 완료된 모델을 저장합니다.
-    torch.save(model, 'model.pt')
+    trainer.save_checkpoint(save_path + "complete_model.ckpt")

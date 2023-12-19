@@ -4,7 +4,7 @@ import torch
 import torchmetrics
 
 class Model(pl.LightningModule):
-    def __init__(self, model_name, lr):
+    def __init__(self, model_name, lr, tokenizer):
         super().__init__()
         self.save_hyperparameters()
 
@@ -14,13 +14,13 @@ class Model(pl.LightningModule):
         # 사용할 모델을 호출합니다.
         self.plm = transformers.AutoModelForSequenceClassification.from_pretrained(
             pretrained_model_name_or_path=model_name, num_labels=1)
+        self.plm.resize_token_embeddings(len(tokenizer))
         self.plm.config.pad_token_id
-        # Loss 계산을 위해 사용될 L1Loss를 호출합니다.
-        self.loss_func = torch.nn.L1Loss()
+        # Loss 계산을 위해 사용될 L2Loss를 호출합니다.
+        self.loss_func = torch.nn.MSELoss()
 
     def forward(self, x):
         attention_mask = (x != 1).float()
-        # x = x.type(torch.float64)  #이거는 아직 실험해보기 전인데, 지금 우리 모델의 output이 0에 가까워서 pearson 계산에 불리하다고 함.
         x = self.plm(x, attention_mask=attention_mask)['logits']
 
         return x
@@ -55,8 +55,7 @@ class Model(pl.LightningModule):
 
         return logits.squeeze()
 
-    # lr_scheduler 종류는 https://sanghyu.tistory.com/113 여기에서 참고
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(self.parameters(), lr=self.lr)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.3)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.3)
         return [optimizer], [scheduler]

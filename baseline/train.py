@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # dataloader와 model을 생성합니다.
     dataloader = Dataloader(args.model_name, args.batch_size, args.shuffle, args.train_path, args.dev_path,
                             args.test_path, args.predict_path)
-    model = Model(args.model_name, args.learning_rate)
+    model = Model(args.model_name, args.learning_rate, dataloader.tokenizer)
     wandb_logger = WandbLogger(project="level1_STS",
                                name="batch_size:32//loss_func:MSE//optim:AdamW//DataAugmentation")
 

@@ -1,5 +1,6 @@
 from data_loader import Dataloader
 from model import Model
+from text_preprocessing import TextPreprocesser
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
@@ -29,21 +30,25 @@ if __name__ == '__main__':
     parser.add_argument('--max_epoch', default=30, type=int)
     parser.add_argument('--shuffle', default=True)
     parser.add_argument('--learning_rate', default=2e-5, type=float)
-    parser.add_argument('--train_path', default='../data/train.csv')
+    parser.add_argument('--train_path', default='../data/train_augmentation.csv')
     parser.add_argument('--dev_path', default='../data/dev.csv')
     parser.add_argument('--test_path', default='../data/dev.csv')
     parser.add_argument('--predict_path', default='../data/test.csv')
     args = parser.parse_args(args=[])
+
+    # 데이터 증강을 수행합니다.
+    data_augmentation = TextPreprocesser('../data/train.csv','../data/train_augmentation.csv')
+    data_augmentation.preprocessing()
 
     # dataloader와 model을 생성합니다.
     dataloader = Dataloader(args.model_name, args.batch_size, args.shuffle, args.train_path, args.dev_path,
                             args.test_path, args.predict_path)
     model = Model(args.model_name, args.learning_rate)
     wandb_logger = WandbLogger(project="level1_STS",
-                               name="batch_size:32//loss_func:MSE//optim:AdamW")
+                               name="batch_size:32//loss_func:MSE//optim:AdamW//DataAugmentation")
 
-    save_path = f"save_model/{args.model_name}_Max-epoch{args.max_epoch}_Batch-size{args.batch_size}/"
-    # gpu가 없으면 accelerator="cpu"로 변경해주세요, gpu가 여러개면 'devices=4'처럼 사용하실 gpu의 개수를 입력해주세요
+    save_path = f"save_model/{args.model_name}_Max-epoch{args.max_epoch}_Batch-size{args.batch_size}_DataAugmentation/"
+    
     trainer = pl.Trainer(
         accelerator="gpu",
         devices=1, 
@@ -52,7 +57,7 @@ if __name__ == '__main__':
         logger=wandb_logger,
         callbacks=[
             EarlyStopping(monitor="val_pearson",
-                          patience=10,
+                          patience=20,
                           mode='max'),
             ModelCheckpoint(dirpath=save_path,
                             save_top_k=1,

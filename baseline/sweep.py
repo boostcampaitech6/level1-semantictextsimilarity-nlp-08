@@ -1,4 +1,5 @@
 from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 from data_loader import Dataloader, xlmCustomDataloader
 from model import Model, xlmCustomModel
 
@@ -27,10 +28,10 @@ sweep_config = {
             'values' : [0.00001, 0.00002]
         },
         'step_size' : {
-            'values' : [5, 10]
+            'values' : [5] #5, 10
         },
         'gamma' : {
-            'values' : [0.3, 0.5, 0.7]
+            'values' : [0.3] #0.3, 0.5, 0.7
         }
     }
 }
@@ -94,6 +95,9 @@ def sweep_train(config=None):
         
     wandb_logger = WandbLogger(project='nlp_STS_sweep')
 
+    # ckpt 저장하지 않도록 설정
+    checkpoint_callback = ModelCheckpoint(save_top_k=0)
+
     trainer = pl.Trainer(max_epochs=args.max_epoch,
                          logger=wandb_logger,
                          log_every_n_steps=1)
@@ -101,9 +105,9 @@ def sweep_train(config=None):
     trainer.test(model=model, datamodule=dataloader)
 
 # count는 실행할 횟수설정
-# 72로 설정한 이유는 현재상황에서 가능한 최대탐색횟수가 72회
+# 12로 설정한 이유는 현재상황에서 가능한 최대탐색횟수가 12회
     
 # sweep 하다가 중단해야 하는 경우 ctrl+c 누르면 강제종료 ㄱㄴ
 wandb.agent(sweep_id=sweep_id,
             function=sweep_train,
-            count=3)
+            count=12)

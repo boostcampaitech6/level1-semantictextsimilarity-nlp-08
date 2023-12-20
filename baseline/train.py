@@ -47,7 +47,7 @@ if __name__ == '__main__':
     data_augmentation.preprocessing()
 
     # dataloader와 model을 생성합니다.
-    if args.custom & args.model_name == 'xlm-roberta-large':
+    if args.custom and args.model_name == 'xlm-roberta-large':
         dataloader = xlmCustomDataloader(args.model_name, args.batch_size, args.shuffle, args.train_path, args.dev_path,
                                 args.test_path, args.predict_path)
         model = xlmCustomModel(model_name=args.model_name, 

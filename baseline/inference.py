@@ -27,7 +27,7 @@ if __name__ == '__main__':
     save_path = f"save_model/{args.model_name.replace('/', '_')}_Max-epoch:{args.max_epoch}_Batch-size:{args.batch_size}_custom:{args.custom}_final/"
 
     # dataloader와 model을 생성합니다.
-    if args.custom & args.model_name == "xlm-roberta-large":
+    if args.custom and args.model_name == "xlm-roberta-large":
         dataloader = xlmCustomDataloader(args.model_name, args.batch_size, args.shuffle, args.train_path, args.dev_path,
                                 args.test_path, args.predict_path)
         model = xlmCustomModel.load_from_checkpoint(save_path + "best_model.ckpt")

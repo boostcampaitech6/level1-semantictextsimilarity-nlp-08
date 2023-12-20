@@ -63,7 +63,7 @@ def sweep_train(config=None):
     elif config.loss_function == 'mse_loss':
         loss_fun = torch.nn.MSELoss()
 
-    if args.custom & args.model_name == 'xlm-roberta-large':
+    if args.custom and args.model_name == 'xlm-roberta-large':
         dataloader = xlmCustomDataloader(args.model_name, 
                             config.batch_size, 
                             args.shuffle, 

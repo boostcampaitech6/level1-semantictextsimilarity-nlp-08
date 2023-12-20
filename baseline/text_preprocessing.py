@@ -32,7 +32,20 @@ class TextPreprocesser():
                                     df['sentence_2'][idx],
                                     5.0,
                                     1.0]
-
+            elif df['label'][idx] == 5:
+                df.loc[idx+n+1] = ['boostcamp-sts-v1-df-' + str(idx+n+1), 
+                                    df['source'][idx],
+                                    df['sentence_1'][idx], 
+                                    df['sentence_1'][idx][::-1],
+                                    0.0,
+                                    0.0]
+                df.loc[idx+n+2] = ['boostcamp-sts-v1-df-' + str(idx+n+2), 
+                                    df['source'][idx],
+                                    df['sentence_2'][idx], 
+                                    df['sentence_2'][idx][::-1],
+                                    0.0,
+                                    0.0]
+                
         m = len(df)
         for idx in df.index:
             df.loc[idx+m+1] = ['boostcamp-sts-v1-df-' + str(idx+m+1),

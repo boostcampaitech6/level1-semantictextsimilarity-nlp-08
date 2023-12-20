@@ -1,5 +1,5 @@
-from data_loader import Dataloader
-from model import Model
+from data_loader import Dataloader, xlmCustomDataloader
+from model import Model, xlmCustomModel
 from text_preprocessing import TextPreprocesser
 from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -29,11 +29,17 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--max_epoch', default=30, type=int)
     parser.add_argument('--shuffle', default=True)
-    parser.add_argument('--learning_rate', default=2e-5, type=float)
+    parser.add_argument('--learning_rate', default=1e-5, type=float)
     parser.add_argument('--train_path', default='../data/train_augmentation.csv')
     parser.add_argument('--dev_path', default='../data/dev.csv')
     parser.add_argument('--test_path', default='../data/dev.csv')
     parser.add_argument('--predict_path', default='../data/test.csv')
+    parser.add_argument('--custom', default=False)
+    # loss func 후보:[L1Loss, MSELoss] -> sweep해서 나온 수치로 고쳐주기!!
+    parser.add_argument('--loss_function', default=torch.nn.L1Loss())
+    # lr scheduler에서 사용할 param들 -> sweep해서 나온 수치로 고쳐주기!!
+    parser.add_argument('--step_size', default=10, type=int)
+    parser.add_argument('--gamma', default=0.5, type=float)
     args = parser.parse_args(args=[])
 
     # 데이터 증강을 수행합니다.
@@ -41,13 +47,28 @@ if __name__ == '__main__':
     data_augmentation.preprocessing()
 
     # dataloader와 model을 생성합니다.
-    dataloader = Dataloader(args.model_name, args.batch_size, args.shuffle, args.train_path, args.dev_path,
-                            args.test_path, args.predict_path)
-    model = Model(args.model_name, args.learning_rate, dataloader.tokenizer)
+    if args.custom & args.model_name == 'xlm-roberta-large':
+        dataloader = xlmCustomDataloader(args.model_name, args.batch_size, args.shuffle, args.train_path, args.dev_path,
+                                args.test_path, args.predict_path)
+        model = xlmCustomModel(model_name=args.model_name, 
+                               lr=args.learning_rate, 
+                               tokenizer=dataloader.tokenizer,
+                               loss_function=args.loss_function,
+                               step_size=args.step_size,
+                               gamma=args.gamma)
+    else:
+        dataloader = Dataloader(args.model_name, args.batch_size, args.shuffle, args.train_path, args.dev_path,
+                                args.test_path, args.predict_path)
+        model = Model(model_name=args.model_name, 
+                      lr=args.learning_rate, 
+                      tokenizer=dataloader.tokenizer,
+                      loss_function=args.loss_function,
+                      step_size=args.step_size,
+                      gamma=args.gamma)
     wandb_logger = WandbLogger(project="level1_STS",
-                               name="batch_size:32//loss_func:MSE//optim:AdamW//DataAugmentation")
+                               name=f"batch_size:{args.batch_size}//loss_func:MSE//optim:AdamW")
 
-    save_path = f"save_model/{args.model_name}_Max-epoch{args.max_epoch}_Batch-size{args.batch_size}_DataAugmentation/"
+    save_path = f"save_model/{args.model_name.replace('/', '_')}_Max-epoch:{args.max_epoch}_Batch-size:{args.batch_size}_custom:{args.custom}_final/"
     
     trainer = pl.Trainer(
         accelerator="gpu",

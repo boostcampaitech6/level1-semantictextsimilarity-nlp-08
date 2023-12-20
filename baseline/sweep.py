@@ -100,6 +100,7 @@ def sweep_train(config=None):
 
     trainer = pl.Trainer(max_epochs=args.max_epoch,
                          logger=wandb_logger,
+                         callbacks=[checkpoint_callback],
                          log_every_n_steps=1)
     trainer.fit(model=model, datamodule=dataloader)
     trainer.test(model=model, datamodule=dataloader)

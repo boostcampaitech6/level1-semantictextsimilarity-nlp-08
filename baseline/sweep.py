@@ -36,7 +36,7 @@ sweep_config = {
 }
 
 sweep_id = wandb.sweep(sweep=sweep_config,
-                       project='my_project')
+                       project='nlp_STS_sweep')
 
 # sweep_train함수내에 모델이름은 본인에 맞춰 수정해줘야 함
 def sweep_train(config=None):
@@ -49,7 +49,7 @@ def sweep_train(config=None):
     parser.add_argument('--model_name', default='xlm-roberta-large', type=str)
     parser.add_argument('--max_epoch', default=3, type=int)
     parser.add_argument('--shuffle', default=True)
-    parser.add_argument('--train_path', default='../data/train.csv')
+    parser.add_argument('--train_path', default='../data/train_augmentation.csv')
     parser.add_argument('--dev_path', default='../data/dev.csv')
     parser.add_argument('--test_path', default='../data/dev.csv')
     parser.add_argument('--predict_path', default='../data/test.csv')
@@ -87,11 +87,12 @@ def sweep_train(config=None):
                                 args.predict_path)
         model = Model(model_name=args.model_name,
                     lr=config.learning_rate,
+                    tokenizer=dataloader.tokenizer,
                     loss_function=loss_fun,
                     step_size=config.step_size,
                     gamma=config.gamma)
         
-    wandb_logger = WandbLogger(project='my_project')
+    wandb_logger = WandbLogger(project='nlp_STS_sweep')
 
     trainer = pl.Trainer(max_epochs=args.max_epoch,
                          logger=wandb_logger,

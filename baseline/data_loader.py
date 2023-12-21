@@ -3,6 +3,7 @@ import torch
 import transformers
 import pytorch_lightning as pl
 
+from sklearn.model_selection import StratifiedShuffleSplit
 from tqdm.auto import tqdm
 
 
@@ -38,11 +39,12 @@ class xlmCustomDataset(torch.utils.data.Dataset):
 
 
 class Dataloader(pl.LightningDataModule):
-    def __init__(self, model_name, batch_size, shuffle, train_path, dev_path, test_path, predict_path):
+    def __init__(self, model_name, batch_size, shuffle, train_path, dev_path, test_path, predict_path, stratified=False):
         super().__init__()
         self.model_name = model_name
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.stratified = stratified
 
         self.train_path = train_path
         self.dev_path = dev_path
@@ -54,8 +56,15 @@ class Dataloader(pl.LightningDataModule):
         self.test_dataset = None
         self.predict_dataset = None
 
+        # custom model은 PERSON토큰과 </s>를 사용하지 않고, electra는 special_token 3개를 추가. PERSON사용 X.
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(model_name, model_max_length = 128)
-        self.tokenizer.add_special_tokens({'additional_special_tokens': ['<PERSON>']})
+        
+        if self.model_name == 'snunlp/KR-ELECTRA-discriminator':
+            special_tokens = {'additional_special_tokens' : ['<PERSON>', '[NSMC]', '[PETITION]','[SLACK]']}
+        else:
+            special_tokens = {'additional_special_tokens' : ['<PERSON>']}
+        
+        self.tokenizer.add_special_tokens(special_tokens)
         self.target_columns = ['label']
         self.delete_columns = ['id']
         self.text_columns = ['sentence_1', 'sentence_2']
@@ -66,6 +75,9 @@ class Dataloader(pl.LightningDataModule):
             # 두 입력 문장을 모델에 맞는 sep_token으로 이어붙여서 전처리
             if self.model_name == "xlm-roberta-large":
                 text = '</s>'.join([item[text_column] for text_column in self.text_columns])
+            elif self.model_name == "snunlp/KR-ELECTRA-discriminator":
+                source_token = f"[{item['source'].split('-')[0].upper()}]"
+                text = source_token + '[SEP]'.join([item[text_column] for text_column in self.text_columns])
             else:
                 text = '[SEP]'.join([item[text_column] for text_column in self.text_columns])
             outputs = self.tokenizer(text, add_special_tokens=True, padding='max_length', truncation=True)
@@ -87,9 +99,16 @@ class Dataloader(pl.LightningDataModule):
 
     def setup(self, stage='fit'):
         if stage == 'fit':
-            # 학습 데이터와 검증 데이터셋을 호출
-            train_data = pd.read_csv(self.train_path)
-            val_data = pd.read_csv(self.dev_path)
+            if self.stratified:
+                total_data = pd.read_csv(self.train_path)
+                split = StratifiedShuffleSplit(n_splits=1, test_size=0.2, random_state=1000) 
+                for train_idx, val_idx in split.split(total_data, total_data["binary-label"]):
+                    train_data = total_data.loc[train_idx]
+                    val_data = total_data.loc[val_idx]
+            else:
+                # 학습 데이터와 검증 데이터셋을 호출
+                train_data = pd.read_csv(self.train_path)
+                val_data = pd.read_csv(self.dev_path)
             
             # 학습데이터 준비
             train_inputs, train_targets = self.preprocessing(train_data)
@@ -141,7 +160,6 @@ class xlmCustomDataloader(pl.LightningDataModule):
         self.predict_dataset = None
 
         self.tokenizer = transformers.AutoTokenizer.from_pretrained(model_name, model_max_length = 128)
-        self.tokenizer.add_special_tokens({'additional_special_tokens':['<PERSON>']})
         self.target_columns = ['label']
         self.delete_columns = ['id']
         self.text_columns = ['sentence_1', 'sentence_2']
@@ -150,7 +168,7 @@ class xlmCustomDataloader(pl.LightningDataModule):
     def tokenizing(self, dataframe):
         data = []
         for idx, item in tqdm(dataframe.iterrows(), desc='tokenizing', total=len(dataframe)):
-            text = '</s>'.join([item[text_column] for text_column in self.text_columns])
+            text = '[SEP]'.join([item[text_column] for text_column in self.text_columns])
             outputs = self.tokenizer(text, add_special_tokens=True, padding='max_length', truncation=True)
             data.append(outputs['input_ids'])
         return data

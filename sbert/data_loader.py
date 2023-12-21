@@ -47,26 +47,35 @@ class Dataloader(pl.LightningDataModule):
         self.delete_columns = []#['id']
         self.text_columns = ['sentence_1', 'sentence_2']
 
-    def tokenizing(self, dataframe):
+    def tokenizing(self, dataframe, swap):
         data = []
         for idx, item in tqdm(dataframe.iterrows(), desc='tokenizing', total=len(dataframe)):
             # 두 입력 문장을 [SEP] 토큰으로 이어붙여서 전처리합니다.
             text = '[SEP]'.join([item[text_column] for text_column in self.text_columns])
             outputs = self.tokenizer(text, add_special_tokens=True, padding='max_length', truncation=True)
             data.append(outputs['input_ids'])
+        # sentence1과 sentence2를 swap해서 추가.
+        if swap:
+            for idx, item in tqdm(dataframe.iterrows(), desc='tokenizing', total=len(dataframe)):
+                text = '[SEP]'.join([item[text_column] for text_column in self.text_columns[::-1]])
+                outputs = self.tokenizer(text, add_special_tokens=True, padding='max_length', truncation=True)
+                data.append(outputs['input_ids'])
         return data
 
-    def preprocessing(self, data):
+    def preprocessing(self, data, swap=True):
         # 안쓰는 컬럼을 삭제합니다.
         data = data.drop(columns=self.delete_columns)
 
         # 타겟 데이터가 없으면 빈 배열을 리턴합니다.
         try:
-            targets = data[self.target_columns].values.tolist()
+            if swap:
+                targets = data[self.target_columns].values.tolist() + data[self.target_columns].values.tolist()
+            else:
+                targets = data[self.target_columns].values.tolist()
         except:
             targets = []
-        # 텍스트 데이터를 전처리합니다
-        inputs = self.tokenizing(data)        
+        # 텍스트 데이터를 전처리합니다.
+        inputs = self.tokenizing(data, swap)
 
         return inputs, targets
 
@@ -88,11 +97,11 @@ class Dataloader(pl.LightningDataModule):
         else:
             # 평가데이터 준비
             test_data = pd.read_csv(self.test_path)
-            test_inputs, test_targets = self.preprocessing(test_data)
+            test_inputs, test_targets = self.preprocessing(test_data, False)
             self.test_dataset = Dataset(test_inputs, test_targets)
 
             predict_data = pd.read_csv(self.predict_path)
-            predict_inputs, predict_targets = self.preprocessing(predict_data)
+            predict_inputs, predict_targets = self.preprocessing(predict_data, False)
             self.predict_dataset = Dataset(predict_inputs, [])
 
     def train_dataloader(self):

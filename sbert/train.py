@@ -32,10 +32,10 @@ if __name__ == '__main__':
     parser.add_argument('--max_epoch', default=20, type=int)
     parser.add_argument('--shuffle', default=True)
     parser.add_argument('--learning_rate', default=8e-5, type=float)
-    parser.add_argument('--train_path', default='../data/converted_train.csv')
-    parser.add_argument('--dev_path', default='../data/converted_dev.csv')
-    parser.add_argument('--test_path', default='../data/converted_dev.csv')
-    parser.add_argument('--predict_path', default='../data/converted_test.csv')
+    parser.add_argument('--train_path', default='../data/train.csv')
+    parser.add_argument('--dev_path', default='../data/dev.csv')
+    parser.add_argument('--test_path', default='../data/dev.csv')
+    parser.add_argument('--predict_path', default='../data/test.csv')
     args = parser.parse_args(args=[])
     
     os.environ["TOKENIZERS_PARALLELISM"] = "false"

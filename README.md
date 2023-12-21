@@ -40,6 +40,7 @@ STS란 두 텍스트가 얼마나 유사한지 판단하는 NLP Task입니다. �
 - --loss_function : 실험할 loss_function
 - --step_size : lr scheduler의 step_size
 - --gamma : lr_scheduler의 gamma
+- --stratified : 층화추출 사용 여부
 ```
 python3 train.py
 ```

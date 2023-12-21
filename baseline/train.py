@@ -26,20 +26,21 @@ if __name__ == '__main__':
     # 실행 시 '--batch_size=64' 같은 인자를 입력하지 않으면 default 값이 기본으로 실행됩니다
     parser = argparse.ArgumentParser()
     parser.add_argument('--model_name', default='xlm-roberta-large', type=str)
-    parser.add_argument('--batch_size', default=32, type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
     parser.add_argument('--max_epoch', default=30, type=int)
     parser.add_argument('--shuffle', default=True)
-    parser.add_argument('--learning_rate', default=1e-5, type=float)
+    parser.add_argument('--learning_rate', default=2e-5, type=float)
     parser.add_argument('--train_path', default='../data/train_augmentation.csv')
     parser.add_argument('--dev_path', default='../data/dev.csv')
     parser.add_argument('--test_path', default='../data/dev.csv')
     parser.add_argument('--predict_path', default='../data/test.csv')
     parser.add_argument('--custom', default=False)
     # loss func 후보:[L1Loss, MSELoss] -> sweep해서 나온 수치로 고쳐주기!!
-    parser.add_argument('--loss_function', default=torch.nn.L1Loss())
+    parser.add_argument('--loss_function', default=torch.nn.MSELoss())
     # lr scheduler에서 사용할 param들 -> sweep해서 나온 수치로 고쳐주기!!
     parser.add_argument('--step_size', default=10, type=int)
-    parser.add_argument('--gamma', default=0.5, type=float)
+    parser.add_argument('--gamma', default=0.3, type=float)
+    parser.add_argument('--stratified', default=False)
     args = parser.parse_args(args=[])
 
     # 데이터 증강을 수행합니다.
@@ -58,7 +59,7 @@ if __name__ == '__main__':
                                gamma=args.gamma)
     else:
         dataloader = Dataloader(args.model_name, args.batch_size, args.shuffle, args.train_path, args.dev_path,
-                                args.test_path, args.predict_path)
+                                args.test_path, args.predict_path, args.stratified)
         model = Model(model_name=args.model_name, 
                       lr=args.learning_rate, 
                       tokenizer=dataloader.tokenizer,
@@ -66,7 +67,7 @@ if __name__ == '__main__':
                       step_size=args.step_size,
                       gamma=args.gamma)
     wandb_logger = WandbLogger(project="level1_STS",
-                               name=f"batch_size:{args.batch_size}//loss_func:MSE//optim:AdamW")
+                               name=f"batch_size:{args.batch_size}//loss_func:MSE//optim:AdamW//step_size:{args.step_size}//gamma:{args.gamma}")
 
     save_path = f"save_model/{args.model_name.replace('/', '_')}_Max-epoch:{args.max_epoch}_Batch-size:{args.batch_size}_custom:{args.custom}_final/"
     
